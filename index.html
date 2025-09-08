@@ -1,1 +1,259 @@
-<hi>test</hi>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>高考倒计时</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Serif SC', serif;
+      background: linear-gradient(to right, #a18cd1, #fbc2eb);
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      text-align: center;
+      padding-top: 50px;
+    }
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    .countdown {
+      font-size: 2.5rem;
+      background: white;
+      padding: 1rem 2rem;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      margin-bottom: 40px;
+    }
+    .footer {
+      margin-top: 40px;
+      font-size: 1rem;
+      color: #fff;
+    }
+    .message-board {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 12px;
+      padding: 20px;
+      width: 90%;
+      max-width: 600px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      margin-bottom: 10px;
+      resize: none;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #a18cd1;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .messages {
+      text-align: left;
+      margin-top: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .message {
+      padding: 8px 12px;
+      background: #f1f1f1;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .message button {
+      background: #e74c3c;
+      font-size: 0.8rem;
+      padding: 4px 8px;
+    }
+
+    #sideMessages {
+      position: fixed;
+      top: 120px;
+      right: 40px;
+      z-index: 9998;
+      background: rgba(255, 255, 255, 0.98);
+      color: #333;
+      padding: 28px 24px;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 24px rgba(161, 140, 209, 0.18);
+      border-radius: 18px;
+      max-width: 340px;
+      min-width: 220px;
+      max-height: 60vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      border: 2px solid #a18cd1;
+    }
+    #sideMessages div {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>高考倒计时</h1>
+  <div class="countdown" id="countdown"></div>
+
+  <div class="message-board">
+    <h2>留言板</h2>
+    <textarea id="messageInput" placeholder="写下你对高考的祝福或自己的期许吧..."></textarea>
+    <br>
+    <button onclick="postMessage()">发布留言</button>
+    <div class="messages" id="messages"></div>
+  </div>
+
+  <div class="footer">加油</div>
+
+  <!-- 新版：留言展示侧边窗口 -->
+  <div id="sideMessages">
+    <div style="font-weight:bold;font-size:1.2rem;margin-bottom:10px;color:#a18cd1;">大家的留言</div>
+    <div id="sideMessagesList"></div>
+  </div>
+
+  <script>
+    const gaokaoDate = new Date("2026-06-07T00:00:00");
+    const countdownEl = document.getElementById("countdown");
+
+    function updateCountdown() {
+      const now = new Date();
+      const diff = gaokaoDate - now;
+
+      if (diff <= 0) {
+        countdownEl.textContent = "高考进行中，加油！";
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+
+      countdownEl.textContent = `${days} 天 ${hours} 小时 ${minutes} 分 ${seconds} 秒`;
+    }
+
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
+    const messagesEl = document.getElementById("messages");
+    const sideMessagesList = document.getElementById("sideMessagesList");
+
+    async function loadMessages() {
+      const res = await fetch("http://8.137.114.62:5000/messages");
+      const list = await res.json();
+      messagesEl.innerHTML = "";
+      list.reverse().forEach((msg, index) => renderMessage(msg, index));
+      updateSideMessages(list);
+    }
+
+    function updateSideMessages(list) {
+      const sideList = document.getElementById("sideMessagesList");
+      if (!sideList) return;
+      if (!list || list.length === 0) {
+        sideList.innerHTML = '<span style="color:#aaa;">暂无留言</span>';
+        return;
+      }
+      sideList.innerHTML = '';
+      list.forEach(msg => {
+        const div = document.createElement('div');
+        // 兼容msg为对象或字符串
+        div.textContent = typeof msg === 'string' ? msg : (msg.text || JSON.stringify(msg));
+        div.style.background = '#f6f3fa';
+        div.style.borderRadius = '8px';
+        div.style.padding = '8px 12px';
+        div.style.boxShadow = '0 1px 4px rgba(161,140,209,0.08)';
+        div.style.wordBreak = 'break-all';
+        sideList.appendChild(div);
+      });
+    }
+
+    function renderMessage(textOrObj, index) {
+      const div = document.createElement("div");
+      div.className = "message";
+
+
+      const msgObj = typeof textOrObj === 'string' ? { text: textOrObj, id: index } : textOrObj;
+      const msgText = msgObj.text || JSON.stringify(msgObj);
+      const span = document.createElement("span");
+      span.textContent = msgText;
+
+      const del = document.createElement("button");
+      del.textContent = "删除";
+      del.onclick = async () => {
+        const pwd = prompt("请输入管理员密码进行删除：");
+        if (!pwd) return;
+        const res = await fetch("http://8.137.114.62:5000/messages/" + msgObj.id, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: pwd })
+        });
+        const result = await res.json();
+        if (result.success) {
+          loadMessages();
+        } else {
+          alert(result.error || "删除失败！");
+        }
+      };
+
+      div.appendChild(span);
+      div.appendChild(del);
+      messagesEl.prepend(div);
+    }
+
+    async function postMessage() {
+      const input = document.getElementById("messageInput");
+      const text = input.value.trim();
+      if (text !== "") {
+        await fetch("http://8.137.114.62:5000/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        });
+        input.value = "";
+        loadMessages();
+      }
+    }
+
+
+    setInterval(loadMessages, 1000);
+
+    loadMessages();
+  </script>
+  <div style="margin-top:30px;">
+    <a href="#" id="mysteryLink" style="color:#a18cd1;text-decoration:underline;font-size:0.95rem;opacity:0.7;">
+      神秘小链接
+    </a>
+  </div>
+  <script>
+    document.getElementById('mysteryLink').onclick = function(e) {
+      e.preventDefault();
+      if (confirm('你确定要点吗？后果自负！')) {
+        window.location.href = 'https://qr.alipay.com/fkx158865v7wha0swwxw32e';
+      }
+    };
+  </script>
+</body>
+</html>
